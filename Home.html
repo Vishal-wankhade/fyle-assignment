@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">  <title>Fyle Assignment</title>
+    <!-- <link src="/index.js" type="javaScript" /> -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="loader">
+         <img src="Skateboarding.gif" alt="Loading...." />
+    </div>
+    <div class="searchWrap">
+        <input type="text" placeholder="Enter a valide Github user's username" onchange='searchUser(event)' />
+      </div>
+    <main class="container">
+      
+      <div class="profile">
+
+      </div>
+      <div class="RepoSearchWrap">
+        <input type="text" placeholder="Enter a valid name of the repository" onchange='searchRepo(event)' />
+      </div>
+      <div class="repo-wrap">
+       
+
+      </div>
+      <div id="pagination"></div>
+    </main>
+    <script>
+      
+        var loader = document.querySelector('.loader'); 
+        const container = document.querySelector(".container");
+        const profile = document.querySelector(".profile");
+        const repoWrap = document.querySelector(".repo-wrap");
+        const paginationContainer = document.getElementById('pagination');
+
+        var loading ;
+        var data;
+        var  username = 'johnpapa';
+        const reposPerPage = 5;
+        let currentPage = 1;
+
+        function searchUser(e){
+            username = e.target.value;
+            fetchData();
+        }
+
+        if(loading){
+            loader.style.display = 'block';
+            container.style.display = 'none';
+        }else{
+            loader.style.display ='none';
+            container.style.display = 'block';           
+        }
+
+        async function fetchData() {
+            try {
+                loading = true;
+                const res = await fetch(`https://api.github.com/users/${username}`);
+                data = await res.json();
+
+                const repos = await fetch(`${data.repos_url}?per_page=${reposPerPage}&page=${currentPage}`);
+                const reposData = await repos.json();
+
+                fecthRepos(reposData);
+                updateUI();
+                displayPagination(data.public_repos);
+
+            } catch (error) {
+                console.log(error);
+            }finally{
+                loader = false;
+            }
+        }
+
+        fetchData();
+
+        
+
+        function updateUI() {
+            profile.innerHTML = `
+                <div class='img-wrap'>
+                    <img src='${data.avatar_url}' alt="Profile Picture" width="100">
+                </div>
+                <div class='info'>
+                    <h1>${data.name? data.name : 'Name not available'}</h1>
+                    <h3>${data.bio || 'No bio available'}</h3>
+                    <h3><i class="fas fa-map-marker-alt"></i> ${data.location ? data.location : "Location not available"}</h3>
+                    <h3>${data.public_repos ? `Public Repos : ${data.public_repos}` : "" } </h3>
+                    <a class="profileLink" href=${data.html_url}> <i class="fa-solid fa-link"></i> ${data.html_url}</a>
+                    
+                </div>
+            `;
+        }
+
+        function fecthRepos(reposData) {
+            repoWrap.innerHTML = '';
+            reposData.forEach(ele => {
+                const divWrap = document.createElement("div");
+                divWrap.setAttribute("class", "repo-can");
+                const a = document.createElement("a");
+                const para = document.createElement("p");
+                para.innerText = ele.description ? ele.description : 'No description available';;
+                a.innerText = ele.name.charAt(0).toUpperCase() + ele.name.slice(1);
+
+                repoWrap.appendChild(divWrap);
+                divWrap.appendChild(a);
+                divWrap.appendChild(para);
+                a.setAttribute("href", `${ele.html_url}`);
+                  
+                a.classList.add("repoLink")
+                divWrap.classList.add("repowrap");
+                para.classList.add("desc");
+            });
+        }
+
+        function displayPagination(totalRepos) {
+            const totalPages = Math.ceil(totalRepos / reposPerPage);
+            const maxPageButtons = 10; // Show up to 10 page numbers
+
+            let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+            let endPage = Math.min(startPage + maxPageButtons - 1, totalPages);
+
+            let paginationHTML = '';
+
+            if (currentPage > 1) {
+                paginationHTML += `<button onclick="changePage(${currentPage - 1})">Previous</button>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `<button onclick="changePage(${i})">${i}</button>`;
+            }
+
+            if (currentPage < totalPages) {
+                paginationHTML += `<button onclick="changePage(${currentPage + 1})">Next</button>`;
+            }
+
+            paginationContainer.innerHTML = paginationHTML;
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            fetchData();
+        }
+
+        async function searchRepo(e) {
+    const reponame = e.target.value;
+    try {
+        const res = await fetch(`https://api.github.com/search/repositories?q=${reponame}+user:${username}`);
+        const searchData = await res.json();
+
+        // Check if any repositories are found
+        if (searchData.items.length === 0) {
+            console.log('No matching repositories found');
+            // You can handle the case where no matching repositories are found, e.g., display an error message.
+        } else {
+            // Display the repositories
+            repoWrap.innerHTML = '';
+            searchData.items.forEach(repo => {
+                const divWrap = document.createElement("div");
+                divWrap.setAttribute("class", "repo-can");
+                const a = document.createElement("a");
+                const para = document.createElement("p");
+                para.innerText = repo.description ? repo.description : 'No description available';
+                a.innerText = repo.name.charAt(0).toUpperCase() + repo.name.slice(1);
+
+                repoWrap.appendChild(divWrap);
+                divWrap.appendChild(a);
+                divWrap.appendChild(para);
+                a.setAttribute("href", `${repo.html_url}`);
+
+                a.classList.add("repoLink");
+                divWrap.classList.add("repowrap");
+                para.classList.add("desc");
+            });
+        }
+    } catch (error) {
+        console.log("Error in repo search:", error);
+    }
+}
+
+
+    </script>
+</body>
+</html>
